@@ -6,17 +6,33 @@ const productsRouter = require("./routes/products.router")
 const cartsRouter = require("./routes/carts.router")
 const messagesRouter = require("./routes/messages.router")
 const uploadRouter = require("./routes/upload.router")
+const sessionRouter = require("./routes/sessions.router.js")
 const handlebars = require("express-handlebars")
 const multer = require('multer');
-//const viewsRouter = require("./routes/views.router.js")
-
+const passport = require("passport");
+const LocalStrategy = require("passport-local").Strategy;
+const session = require("express-session");
+const { userModel } = require("./models/users.model");
+const MongoStore = require("connect-mongo")
+const { createHash, isValidPassword, generateToken } = require("./utils.js")
+const cookieParser = require("cookie-parser")
 
 const app = express();
 const PORT = 8080;
 
+
+// Configuración de Passport
+app.use(session({ 
+  secret: "CoderKey",
+   resave: false,
+    saveUninitialized: false }));
+
+app.use(passport.initialize());
+app.use(passport.session());
+
 //conectarse al puerto
 app.listen(PORT, () => {
-    console.log(`Servidor escuchando en puerto ${PORT}`);
+  console.log(`Servidor escuchando en puerto ${PORT}`);
 });
 
 //middlewords
@@ -30,20 +46,27 @@ app.use(express.static(path.join(__dirname, 'public')))
 
 //conectando mongoose
 mongoose.connect("mongodb+srv://coderClau:7725AmorCODER@coderclau.lgoc83w.mongodb.net/?retryWrites=true&w=majority&appName=AtlasApp", {
-   
+
 })
-   .then(() => {
-        console.log("Conectado a la base de datos")
-    })
-    .catch(error => {
-        console.log("Error al intentar conectarse a la DB", error)
-    })
+  .then(() => {
+    console.log("Conectado a la base de datos")
+  })
+  .catch(error => {
+    console.log("Error al intentar conectarse a la DB", error)
+  })
+
 
 
 //Rutas
 app.use("/api/products", productsRouter);
 app.use("/api/carts", cartsRouter);
 app.use("/api/messages", messagesRouter);
+app.use("/api/sessions", sessionRouter)
+
+app.post("/login", passport.authenticate('local', { session: false }), (req, res) => {
+  const token = generateToken(req.user)
+  res.json({ token })
+})
 
 //Multer
 app.use("/", uploadRouter);
@@ -59,7 +82,7 @@ app.use("/", express.static(__dirname + "/public"));
 
 //View handlebars
 app.get("/chat", async (req, res) => {
-    res.render("chat", {
-        title: "Chat",
-    })
+  res.render("chat", {
+    title: "Chat",
+  })
 })
